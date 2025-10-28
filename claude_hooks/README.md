@@ -9,7 +9,9 @@ This notification system tracks Claude Code session activity and writes structur
 ## Features
 
 - ✅ **Automatic notifications** - Triggers when Claude stops and waits for input
-- 📝 **Smart descriptions** - Extracts Claude's last message for context
+- 🔔 **PreToolUse tracking** - Get notified when Claude needs approval for file operations (NEW!)
+- 🤖 **AI-powered descriptions** - Optional smart mode uses Claude API for contextual summaries (NEW!)
+- 📝 **Smart fallback** - Extracts Claude's last message when smart mode is disabled
 - 🎨 **Pretty viewer** - Color-coded terminal UI for easy reading
 - 📊 **Structured format** - JSONL format for easy parsing and processing
 - 🔄 **Real-time monitoring** - Follow mode to watch notifications as they arrive
@@ -169,6 +171,88 @@ view-notifications.sh
   - Supports follow mode
 ```
 
+## Advanced Features
+
+### Smart Mode (AI-Powered Descriptions)
+
+Smart mode uses the Claude API to generate intelligent, contextual task summaries instead of simple text extraction.
+
+**Example comparison:**
+- **Simple mode:** "Claude is waiting for your input"
+- **Smart mode:** "Updated notification hook with PreToolUse tracking and smart descriptions"
+
+#### Enabling Smart Mode
+
+1. **Install the Anthropic package:**
+   ```bash
+   pip install anthropic
+   ```
+
+2. **Set your API key in `.claude/settings.json`:**
+   ```json
+   {
+     "env": {
+       "ANTHROPIC_API_KEY": "sk-ant-your-key-here"
+     }
+   }
+   ```
+
+   Or add to your shell profile (~/.zshrc or ~/.bashrc):
+   ```bash
+   export ANTHROPIC_API_KEY="sk-ant-your-key-here"
+   ```
+
+3. **Restart Claude Code** for the environment variable to take effect.
+
+#### How It Works
+
+- Uses `claude-3-5-haiku-20241022` (fast, cheap model)
+- 3-second timeout to avoid blocking hooks
+- Automatic fallback to simple mode if API unavailable or fails
+- Costs ~$0.0001 per notification (very affordable!)
+
+### PreToolUse Hook (Approval Tracking)
+
+Track when Claude needs your approval to write/edit files or run commands.
+
+#### Enabling PreToolUse
+
+Add to `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [...],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/notification-hook.py"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### Example PreToolUse Notifications
+
+```
+[2025-10-28 15:02:06] Session test-write
+  Path: /Users/aldo/dev/sonar
+  Task: Claude wants to write to /test/newfile.py
+  Event: PreToolUse
+
+[2025-10-28 15:02:06] Session test-bash
+  Path: /Users/aldo/dev/sonar
+  Task: Claude wants to run: npm install && npm run build
+  Event: PreToolUse
+```
+
+Perfect for tracking what Claude wants to do before you approve it!
+
 ## Configuration Options
 
 ### Change Notification File Location
@@ -233,12 +317,12 @@ The system currently tracks the `Stop` event. To track other events (like `PreTo
 
 ## Next Steps / Future Enhancements
 
+- [x] ~~**Smart summaries**~~ - ✅ DONE! Use LLM to generate better task descriptions
+- [x] ~~**PreToolUse tracking**~~ - ✅ DONE! Get notified when Claude needs approval
 - [ ] **Desktop notifications** - Use OS notifications (macOS/Linux/Windows)
 - [ ] **Web dashboard** - Simple HTTP server for viewing across machines
 - [ ] **Slack/Discord integration** - Post notifications to team channels
-- [ ] **Smart summaries** - Use LLM to generate better task descriptions
 - [ ] **Session analytics** - Track Claude usage patterns and metrics
-- [ ] **PreToolUse tracking** - Get notified when Claude needs approval
 - [ ] **Filtering** - Filter by project, time range, or event type
 - [ ] **Export options** - Export to CSV, Markdown, or other formats
 
@@ -256,5 +340,9 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 1.0.0 (Initial Release)
+**Version:** 2.0.0
+**What's New in v2.0:**
+- 🤖 Smart Mode: AI-powered descriptions using Claude API
+- 🔔 PreToolUse Hook: Track approval requests for file operations
+
 **Last Updated:** 2025-10-28
