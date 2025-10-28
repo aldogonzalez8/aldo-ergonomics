@@ -9,8 +9,8 @@ This notification system tracks Claude Code session activity and writes structur
 ## Features
 
 - ✅ **Automatic notifications** - Triggers when Claude stops and waits for input
-- 💬 **Slack DM integration** - Get real-time notifications in your Slack DMs (NEW!)
-- 🔔 **PreToolUse tracking** - Get notified when Claude needs approval for file operations
+- 💬 **Slack DM integration** - Get real-time notifications in your Slack DMs
+- 🔔 **Smart approval tracking** - Only notifies when Claude actually needs your permission (not for auto-allowed tools)
 - 🤖 **AI-powered descriptions** - Optional smart mode uses Claude API for contextual summaries
 - 📝 **Smart fallback** - Extracts Claude's last message when smart mode is disabled
 - 🎨 **Pretty viewer** - Color-coded terminal UI for easy reading
@@ -212,11 +212,15 @@ Smart mode uses the Claude API to generate intelligent, contextual task summarie
 - Automatic fallback to simple mode if API unavailable or fails
 - Costs ~$0.0001 per notification (very affordable!)
 
-### PreToolUse Hook (Approval Tracking)
+### Notification Hook (Smart Approval Tracking) - **RECOMMENDED**
 
-Track when Claude needs your approval to write/edit files or run commands.
+Get notified **only when Claude actually needs your approval**, not for every auto-allowed tool use.
 
-#### Enabling PreToolUse
+**Why use Notification instead of PreToolUse?**
+- ✅ **PreToolUse** fires for EVERY tool use (including auto-allowed ones like `git status`) - annoying!
+- ✅ **Notification** fires ONLY when Claude needs approval - perfect!
+
+#### Enabling Notification Hook
 
 Add to `.claude/settings.json`:
 
@@ -224,7 +228,7 @@ Add to `.claude/settings.json`:
 {
   "hooks": {
     "Stop": [...],
-    "PreToolUse": [
+    "Notification": [
       {
         "hooks": [
           {
@@ -238,21 +242,21 @@ Add to `.claude/settings.json`:
 }
 ```
 
-#### Example PreToolUse Notifications
+#### Example Notification Events
 
 ```
 [2025-10-28 15:02:06] Session test-write
   Path: /Users/aldo/dev/sonar
-  Task: Claude wants to write to /test/newfile.py
-  Event: PreToolUse
+  Task: Updated settings (needs approval)
+  Event: Notification
 
-[2025-10-28 15:02:06] Session test-bash
+[2025-10-28 15:03:12] Session test-bash
   Path: /Users/aldo/dev/sonar
-  Task: Claude wants to run: npm install && npm run build
-  Event: PreToolUse
+  Task: Proposed running destructive command (needs approval)
+  Event: Notification
 ```
 
-Perfect for tracking what Claude wants to do before you approve it!
+Perfect for tracking when you actually need to take action!
 
 ### Slack Integration (Direct Messages)
 
@@ -318,7 +322,7 @@ Add both values to `.claude/settings.json`:
   },
   "hooks": {
     "Stop": [...],
-    "PreToolUse": [...]
+    "Notification": [...]
   }
 }
 ```
@@ -355,7 +359,7 @@ Updated hook with Slack     15:30:45
 
 - ✅ **Private DMs** (only you see them)
 - ✅ **Rich formatting** with Block Kit and emojis
-- ✅ **Event-based icons** (🟡 Stop, 🔵 PreToolUse, ⚫ SessionEnd)
+- ✅ **Event-based icons** (🟡 Stop, 🔔 Notification, ⚫ SessionEnd)
 - ✅ **Silent failure** (won't block hooks if Slack is down)
 - ✅ **Dual output** (works alongside file notifications)
 - ✅ **No dependencies** (uses Python standard library)
@@ -392,13 +396,13 @@ notification_file = Path('/tmp/claude-notifications.jsonl')
 
 ### Add More Hook Events
 
-The system currently tracks the `Stop` event. To track other events (like `PreToolUse` for approval requests), add to `.claude/settings.json`:
+The system supports multiple hooks. For approval tracking, we **recommend** `Notification` (only fires when approval actually needed):
 
 ```json
 {
   "hooks": {
     "Stop": [...],
-    "PreToolUse": [
+    "Notification": [
       {
         "hooks": [
           {
@@ -411,6 +415,8 @@ The system currently tracks the `Stop` event. To track other events (like `PreTo
   }
 }
 ```
+
+**Note:** You can also use `PreToolUse` instead, but it fires for ALL tool uses (even auto-allowed ones), which can be spammy.
 
 ## Troubleshooting
 
@@ -445,7 +451,7 @@ The system currently tracks the `Stop` event. To track other events (like `PreTo
 ## Next Steps / Future Enhancements
 
 - [x] ~~**Smart summaries**~~ - ✅ DONE! Use LLM to generate better task descriptions
-- [x] ~~**PreToolUse tracking**~~ - ✅ DONE! Get notified when Claude needs approval
+- [x] ~~**Approval tracking**~~ - ✅ DONE! Get notified only when Claude needs approval (Notification hook)
 - [x] ~~**Slack integration**~~ - ✅ DONE! Send DMs directly to your Slack account
 - [ ] **Desktop notifications** - Use OS notifications (macOS/Linux/Windows)
 - [ ] **Web dashboard** - Simple HTTP server for viewing across machines
@@ -468,12 +474,14 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.2.0
-**What's New in v2.2:**
-- 🐍 Python 3.9 compatibility: Fixed type hints for older Python versions
-- 🔧 Virtual environment support: Works with venv-isolated Python installations
+**Version:** 2.3.0
+**What's New in v2.3:**
+- 🔔 **Notification hook** (RECOMMENDED): Only fires when approval actually needed, not for auto-allowed tools
+- 🎯 **Smarter notifications**: Eliminates spam from auto-approved commands like `git status`
+- 📝 **Updated docs**: Clear guidance on Notification vs PreToolUse
 
 **Previous Updates:**
+- v2.2: Python 3.9 compatibility fix for type hints
 - v2.1: Slack Bot Integration with real-time DM notifications
 - v2.0: Smart Mode (AI descriptions) + PreToolUse Hook (approval tracking)
 - v1.0: Initial release with file notifications and viewer

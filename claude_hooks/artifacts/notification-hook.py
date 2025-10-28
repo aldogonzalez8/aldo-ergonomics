@@ -209,6 +209,17 @@ def generate_task_description(hook_data: dict) -> str:
             return read_last_claude_message(transcript_path)
         return "Claude is waiting for your input"
 
+    elif event == 'Notification':
+        # Notification hook fires when Claude needs approval or is idle
+        # Use smart mode to get contextual description
+        transcript_path = hook_data.get('transcript_path', '')
+        if transcript_path:
+            smart_desc = get_smart_description(transcript_path)
+            if smart_desc:
+                return f"{smart_desc} (needs approval)"
+            return read_last_claude_message(transcript_path)
+        return "Claude needs your approval"
+
     elif event == 'PreToolUse':
         tool_name = hook_data.get('tool_name', 'unknown')
         tool_input = hook_data.get('tool_input', {})
@@ -262,6 +273,7 @@ def send_to_slack_dm(notification: dict) -> bool:
         event = notification.get('event', 'Unknown')
         emoji_map = {
             'Stop': '🟡',
+            'Notification': '🔔',
             'PreToolUse': '🔵',
             'SessionEnd': '⚫'
         }
