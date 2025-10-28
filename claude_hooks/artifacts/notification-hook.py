@@ -22,6 +22,12 @@ from typing import Optional
 import re
 
 
+# Configuration constants for hybrid smart mode
+SHORT_MESSAGE_THRESHOLD = 500  # Use full text if message <= this many chars
+SMART_SUMMARY_TARGET = 300     # Target length for AI-condensed messages
+MAX_SLACK_LENGTH = 1000        # Absolute maximum before hard truncation
+
+
 def get_repo_name(cwd: str) -> str:
     """
     Extract repository name from cwd path, handling worktrees.
@@ -94,8 +100,8 @@ def debug_log(message: str):
 
 def read_last_claude_message(transcript_path: str) -> str:
     """
-    Read the last assistant message from the transcript to generate a description.
-    Returns a brief summary of what Claude just did.
+    Read the last assistant message from the transcript.
+    Returns the full message text (up to 2000 chars for parsing).
     """
     try:
         transcript = Path(transcript_path).expanduser()
@@ -116,13 +122,11 @@ def read_last_claude_message(transcript_path: str) -> str:
                         for block in content:
                             if isinstance(block, dict) and block.get('type') == 'text':
                                 text = block.get('text', '').strip()
-                                # Take first sentence or first 100 chars
+                                # Return full message text (with reasonable limit)
                                 if text:
-                                    first_sentence = text.split('\n')[0].split('.')[0]
-                                    return first_sentence[:150] + ('...' if len(first_sentence) > 150 else '')
+                                    return text[:2000]
                     elif isinstance(content, str) and content.strip():
-                        first_sentence = content.strip().split('\n')[0].split('.')[0]
-                        return first_sentence[:150] + ('...' if len(first_sentence) > 150 else '')
+                        return content.strip()[:2000]
             except json.JSONDecodeError:
                 continue
 
@@ -132,12 +136,16 @@ def read_last_claude_message(transcript_path: str) -> str:
         return f"Claude finished (error reading transcript: {str(e)[:50]})"
 
 
-def get_smart_description(transcript_path: str, max_chars: int = 1000) -> Optional[str]:
+def get_smart_description(transcript_path: str, target_chars: int = 300) -> Optional[str]:
     """
-    Use Claude API to generate a smart, concise description of what Claude just did.
+    Use Claude API to condense long messages to target length.
     Returns None if API key not available or if request fails.
+
+    Args:
+        transcript_path: Path to transcript file
+        target_chars: Target character count for condensed message (default 300)
     """
-    debug_log("=== Smart Mode Started ===")
+    debug_log(f"=== Smart Mode Started (target: {target_chars} chars) ===")
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
         debug_log("FAIL: No ANTHROPIC_API_KEY found in environment")
@@ -206,24 +214,18 @@ def get_smart_description(transcript_path: str, max_chars: int = 1000) -> Option
 
         message = client.messages.create(
             model="claude-3-5-haiku-20241022",  # Fast, cheap model
-            max_tokens=50,
+            max_tokens=100,  # Allow longer condensed messages
             temperature=0,
             messages=[{
                 "role": "user",
-                "content": f"""This is Claude's most recent message to the user. What action did Claude JUST complete in THIS message?
+                "content": f"""Condense this message to approximately {target_chars} characters while preserving key information.
 
-Reply with ONE past-tense sentence (10-15 words max) stating the immediate action.
+Focus on:
+- What action Claude just completed
+- Any important details or results
+- What Claude is waiting for (if applicable)
 
-Good examples:
-- "Fixed smart mode prompt to focus on immediate actions"
-- "Updated README documentation with new features"
-- "Refactored notification hook for better performance"
-- "Waiting for user approval to proceed"
-
-Bad examples:
-- "I apologize but..." (never apologize)
-- "Added X, then Y, then Z" (too much history, focus on THIS message only)
-- "The user asked about..." (focus on what Claude did, not user)
+Keep the response concise and informative.
 
 Claude's message:
 {context}"""
@@ -235,8 +237,9 @@ Claude's message:
             response = message.content[0].text.strip()
             # Remove any quotes or extra formatting
             response = response.strip('"\'')
-            debug_log(f"SUCCESS: API returned: {response}")
-            return response[:150]
+            debug_log(f"SUCCESS: API returned ({len(response)} chars): {response}")
+            # Allow slight overflow beyond target
+            return response[:target_chars + 50]
 
         debug_log("FAIL: API returned empty content")
         return None
@@ -245,6 +248,72 @@ Claude's message:
         # Silently fail and fall back to simple mode
         debug_log(f"FAIL: Exception in smart mode: {type(e).__name__}: {str(e)}")
         return None
+
+
+def get_task_description_for_slack(hook_data: dict) -> str:
+    """
+    Hybrid approach: Use full message for short texts, smart condensing for long messages.
+
+    - Messages <= SHORT_MESSAGE_THRESHOLD chars: Use full text (no API call)
+    - Messages > SHORT_MESSAGE_THRESHOLD chars: Use smart AI condensing
+    - Fallback: Truncate to threshold if smart mode fails
+    """
+    event = hook_data.get('hook_event_name', '')
+    transcript_path = hook_data.get('transcript_path', '')
+
+    # Handle events without transcripts
+    if event == 'PreToolUse':
+        tool_name = hook_data.get('tool_name', 'unknown')
+        tool_input = hook_data.get('tool_input', {})
+
+        if tool_name == 'Write':
+            file_path = tool_input.get('file_path', 'a file')
+            return f"Claude wants to write to {file_path}"
+        elif tool_name == 'Edit':
+            file_path = tool_input.get('file_path', 'a file')
+            return f"Claude wants to edit {file_path}"
+        elif tool_name == 'Bash':
+            command = tool_input.get('command', 'a command')[:50]
+            return f"Claude wants to run: {command}"
+        else:
+            return f"Claude wants to use {tool_name} (needs approval)"
+
+    elif event == 'SessionEnd':
+        return "Session ended"
+
+    # For Stop and Notification events with transcripts
+    if not transcript_path:
+        return "Claude is waiting for your input"
+
+    # Extract full message
+    full_message = read_last_claude_message(transcript_path)
+
+    # Check message length
+    if len(full_message) <= SHORT_MESSAGE_THRESHOLD:
+        # Short message - use as-is (no API call, instant)
+        debug_log(f"Message short ({len(full_message)} chars), using full text")
+        result = full_message
+    else:
+        # Long message - use smart condensing
+        debug_log(f"Message long ({len(full_message)} chars), using smart condensing")
+        smart_summary = get_smart_description(transcript_path, target_chars=SMART_SUMMARY_TARGET)
+
+        if smart_summary:
+            result = smart_summary
+        else:
+            # Fallback: truncate to threshold
+            debug_log("Smart mode failed, truncating to threshold")
+            result = full_message[:SHORT_MESSAGE_THRESHOLD] + "..."
+
+    # Add "(needs approval)" suffix for Notification events
+    if event == 'Notification':
+        result = f"{result} (needs approval)"
+
+    # Ensure we don't exceed Slack's limits
+    if len(result) > MAX_SLACK_LENGTH:
+        result = result[:MAX_SLACK_LENGTH - 3] + "..."
+
+    return result
 
 
 def generate_task_description(hook_data: dict) -> str:
@@ -419,10 +488,11 @@ def ensure_slack_channel_exists(channel_name: str, bot_token: str) -> bool:
         return False
 
 
-def send_to_slack_channel(notification: dict) -> bool:
+def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
     """
     Send notification to Slack channel (claude_{user_id}_{repo_name}).
     Automatically creates the channel if it doesn't exist.
+    Uses hybrid approach: full text for short messages, smart condensing for long messages.
     Returns True if successful, False otherwise.
     Silently fails if not configured, channel creation fails, or on error (won't block hook).
     """
@@ -452,8 +522,8 @@ def send_to_slack_channel(notification: dict) -> bool:
         }
         emoji = emoji_map.get(event, '⚪')
 
-        # Extract task description
-        task = notification.get('task', 'No description')
+        # Generate task description using hybrid approach (for Slack)
+        task = get_task_description_for_slack(hook_data)
 
         # Simple message with just emoji and task
         payload = {
@@ -494,7 +564,7 @@ def main():
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'code_session_path': hook_data.get('cwd', ''),
             'session_id': hook_data.get('session_id', ''),
-            'task': generate_task_description(hook_data),
+            'task': generate_task_description(hook_data),  # For file notifications
             'event': hook_data.get('hook_event_name', ''),
             'transcript_path': hook_data.get('transcript_path', ''),
         }
@@ -502,8 +572,8 @@ def main():
         # Write to notification file
         write_notification(notification)
 
-        # Send to Slack channel (optional, won't block if fails)
-        send_to_slack_channel(notification)
+        # Send to Slack channel (uses hybrid approach for better messages)
+        send_to_slack_channel(notification, hook_data)
 
         # Exit successfully (don't block the hook)
         sys.exit(0)
