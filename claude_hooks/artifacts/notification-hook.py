@@ -74,40 +74,42 @@ def get_smart_description(transcript_path: str, max_chars: int = 1000) -> str | 
 
         lines = transcript.read_text().strip().split('\n')
 
-        # Get last few assistant and user messages
-        messages_text = []
-        for line in reversed(lines[-10:]):  # Last 10 lines
+        # Get ONLY the last assistant message (immediate action)
+        last_assistant_text = None
+        for line in reversed(lines[-20:]):  # Search last 20 lines
             try:
                 entry = json.loads(line)
                 # Claude Code transcript format uses "type" instead of "role"
                 role = entry.get('type', '')
 
-                # Content is nested in message.content for Claude Code transcripts
-                content = None
-                if 'message' in entry and isinstance(entry['message'], dict):
-                    content = entry['message'].get('content', [])
-                else:
-                    content = entry.get('content', [])
+                if role == 'assistant':
+                    # Content is nested in message.content for Claude Code transcripts
+                    content = None
+                    if 'message' in entry and isinstance(entry['message'], dict):
+                        content = entry['message'].get('content', [])
+                    else:
+                        content = entry.get('content', [])
 
-                if role in ['assistant', 'user']:
                     # Extract text from content
                     if isinstance(content, list):
                         for block in content:
                             if isinstance(block, dict) and block.get('type') == 'text':
                                 text = block.get('text', '').strip()
                                 if text:
-                                    messages_text.append(f"{role}: {text[:300]}")
+                                    last_assistant_text = text[:800]  # Get more context from this one message
+                                    break
                     elif isinstance(content, str):
-                        messages_text.append(f"{role}: {content[:300]}")
+                        last_assistant_text = content[:800]
+
+                    if last_assistant_text:
+                        break  # Found it, stop searching
             except:
                 continue
 
-        if not messages_text:
+        if not last_assistant_text:
             return None
 
-        # Reverse to get chronological order
-        messages_text = list(reversed(messages_text))
-        context = "\n".join(messages_text[-5:])  # Last 5 messages
+        context = last_assistant_text
 
         # Use Claude API with very short timeout
         client = anthropic.Anthropic(api_key=api_key, timeout=3.0)
@@ -118,7 +120,23 @@ def get_smart_description(transcript_path: str, max_chars: int = 1000) -> str | 
             temperature=0,
             messages=[{
                 "role": "user",
-                "content": f"Summarize what the AI assistant (Claude) just did or created in 10-15 words. Focus on code changes, files modified, or tasks completed. Be direct and factual:\n\n{context}"
+                "content": f"""This is Claude's most recent message to the user. What action did Claude JUST complete in THIS message?
+
+Reply with ONE past-tense sentence (10-15 words max) stating the immediate action.
+
+Good examples:
+- "Fixed smart mode prompt to focus on immediate actions"
+- "Updated README documentation with new features"
+- "Refactored notification hook for better performance"
+- "Waiting for user approval to proceed"
+
+Bad examples:
+- "I apologize but..." (never apologize)
+- "Added X, then Y, then Z" (too much history, focus on THIS message only)
+- "The user asked about..." (focus on what Claude did, not user)
+
+Claude's message:
+{context}"""
             }]
         )
 
