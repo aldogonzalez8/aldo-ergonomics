@@ -468,13 +468,13 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.1.0
-**What's New in v2.1:**
-- 💬 Slack Bot Integration: Get real-time DM notifications on desktop and mobile
-- 🧪 Test helper script: Easy setup verification with `test-slack.py`
-- 📚 Comprehensive Slack setup documentation
+**Version:** 2.2.0
+**What's New in v2.2:**
+- 🐍 Python 3.9 compatibility: Fixed type hints for older Python versions
+- 🔧 Virtual environment support: Works with venv-isolated Python installations
 
 **Previous Updates:**
+- v2.1: Slack Bot Integration with real-time DM notifications
 - v2.0: Smart Mode (AI descriptions) + PreToolUse Hook (approval tracking)
 - v1.0: Initial release with file notifications and viewer
 

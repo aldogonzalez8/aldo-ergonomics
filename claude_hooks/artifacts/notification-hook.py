@@ -18,6 +18,18 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
+
+
+def debug_log(message: str):
+    """Write debug message to log file for troubleshooting"""
+    try:
+        debug_file = Path('/tmp/claude-notification-debug.log')
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with debug_file.open('a') as f:
+            f.write(f"[{timestamp}] {message}\n")
+    except:
+        pass  # Don't let logging break the hook
 
 
 def read_last_claude_message(transcript_path: str) -> str:
@@ -60,25 +72,33 @@ def read_last_claude_message(transcript_path: str) -> str:
         return f"Claude finished (error reading transcript: {str(e)[:50]})"
 
 
-def get_smart_description(transcript_path: str, max_chars: int = 1000) -> str | None:
+def get_smart_description(transcript_path: str, max_chars: int = 1000) -> Optional[str]:
     """
     Use Claude API to generate a smart, concise description of what Claude just did.
     Returns None if API key not available or if request fails.
     """
+    debug_log("=== Smart Mode Started ===")
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
+        debug_log("FAIL: No ANTHROPIC_API_KEY found in environment")
         return None
+    debug_log(f"SUCCESS: API key found (starts with {api_key[:10]}...)")
 
     try:
         # Import anthropic only if API key is available
         import anthropic
+        debug_log("SUCCESS: anthropic module imported")
 
         # Read the last few messages from transcript
         transcript = Path(transcript_path).expanduser()
+        debug_log(f"Transcript path: {transcript}")
         if not transcript.exists():
+            debug_log("FAIL: Transcript file does not exist")
             return None
+        debug_log("SUCCESS: Transcript file exists")
 
         lines = transcript.read_text().strip().split('\n')
+        debug_log(f"SUCCESS: Read {len(lines)} lines from transcript")
 
         # Get ONLY the last assistant message (immediate action)
         last_assistant_text = None
@@ -109,13 +129,17 @@ def get_smart_description(transcript_path: str, max_chars: int = 1000) -> str | 
 
                     if last_assistant_text:
                         break  # Found it, stop searching
-            except:
+            except Exception as e:
+                debug_log(f"Error parsing transcript line: {str(e)}")
                 continue
 
         if not last_assistant_text:
+            debug_log("FAIL: No assistant message found in last 20 lines")
             return None
+        debug_log(f"SUCCESS: Found assistant text ({len(last_assistant_text)} chars): {last_assistant_text[:100]}...")
 
         context = last_assistant_text
+        debug_log("Making API call to Claude...")
 
         # Use Claude API with very short timeout
         client = anthropic.Anthropic(api_key=api_key, timeout=3.0)
@@ -151,12 +175,15 @@ Claude's message:
             response = message.content[0].text.strip()
             # Remove any quotes or extra formatting
             response = response.strip('"\'')
+            debug_log(f"SUCCESS: API returned: {response}")
             return response[:150]
 
+        debug_log("FAIL: API returned empty content")
         return None
 
     except Exception as e:
         # Silently fail and fall back to simple mode
+        debug_log(f"FAIL: Exception in smart mode: {type(e).__name__}: {str(e)}")
         return None
 
 
@@ -175,8 +202,10 @@ def generate_task_description(hook_data: dict) -> str:
             # Try smart mode first (if API key available)
             smart_desc = get_smart_description(transcript_path)
             if smart_desc:
+                debug_log(f"Using SMART mode description: {smart_desc}")
                 return smart_desc
             # Fall back to simple parsing
+            debug_log("Falling back to SIMPLE mode")
             return read_last_claude_message(transcript_path)
         return "Claude is waiting for your input"
 
