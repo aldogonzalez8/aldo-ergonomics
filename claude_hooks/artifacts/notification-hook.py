@@ -6,10 +6,16 @@ Smart Mode (Optional):
   Set ANTHROPIC_API_KEY environment variable to enable smart LLM-based descriptions.
   Requires: pip install anthropic
   Falls back to simple text parsing if not available.
+
+Slack Integration (Optional):
+  Set SLACK_BOT_TOKEN and SLACK_USER_ID environment variables to send DMs.
+  No extra dependencies required (uses urllib).
 """
 import json
 import os
 import sys
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -210,6 +216,108 @@ def write_notification(notification: dict):
         f.write(json.dumps(notification) + '\n')
 
 
+def send_to_slack_dm(notification: dict) -> bool:
+    """
+    Send notification to Slack via Bot chat.postMessage API (DM to user).
+    Returns True if successful, False otherwise.
+    Silently fails if not configured or on error (won't block hook).
+    """
+    bot_token = os.environ.get('SLACK_BOT_TOKEN')
+    user_id = os.environ.get('SLACK_USER_ID')
+
+    if not bot_token or not user_id:
+        return False  # Silently skip if not configured
+
+    try:
+        # Map event to emoji
+        event = notification.get('event', 'Unknown')
+        emoji_map = {
+            'Stop': '🟡',
+            'PreToolUse': '🔵',
+            'SessionEnd': '⚫'
+        }
+        emoji = emoji_map.get(event, '⚪')
+
+        # Format timestamp
+        timestamp_str = notification.get('timestamp', '')
+        try:
+            dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            time_formatted = dt.strftime('%H:%M:%S')
+        except:
+            time_formatted = 'Unknown'
+
+        # Extract fields
+        path = notification.get('code_session_path', 'Unknown')
+        session_id = notification.get('session_id', 'Unknown')
+        session_short = session_id[:8] if len(session_id) >= 8 else session_id
+        task = notification.get('task', 'No description')
+
+        # Build Slack Block Kit message
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"{emoji} *Claude Notification*\n━━━━━━━━━━━━━━━━━━━━━"
+                }
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"📁 *Path:*\n`{path}`"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"🆔 *Session:*\n`{session_short}`"
+                    }
+                ]
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"📝 *Task:*\n{task}"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"⏰ *Time:*\n{time_formatted}"
+                    }
+                ]
+            }
+        ]
+
+        payload = {
+            "channel": user_id,  # Send to user DM
+            "blocks": blocks,
+            "text": f"{emoji} Claude: {task}"  # Fallback for notifications
+        }
+
+        # POST to Slack API
+        url = "https://slack.com/api/chat.postMessage"
+        headers = {
+            "Authorization": f"Bearer {bot_token}",
+            "Content-Type": "application/json; charset=utf-8"
+        }
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers=headers,
+            method='POST'
+        )
+
+        with urllib.request.urlopen(req, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            return result.get('ok', False)
+
+    except (urllib.error.HTTPError, urllib.error.URLError, Exception):
+        # Silent failure - don't block hook
+        return False
+
+
 def main():
     try:
         # Read hook input from stdin
@@ -227,6 +335,9 @@ def main():
 
         # Write to notification file
         write_notification(notification)
+
+        # Send to Slack DM (optional, won't block if fails)
+        send_to_slack_dm(notification)
 
         # Exit successfully (don't block the hook)
         sys.exit(0)
