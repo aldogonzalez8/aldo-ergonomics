@@ -9,7 +9,9 @@ This notification system tracks Claude Code session activity and writes structur
 ## Features
 
 - ✅ **Automatic notifications** - Triggers when Claude stops and waits for input
-- 💬 **Slack DM integration** - Get real-time notifications in your Slack DMs
+- 💬 **Slack channel-per-repo routing** - Get real-time notifications in dedicated private Slack channels per repository
+- 🔄 **Worktree support** - Automatically routes notifications from git worktrees to their parent repo channel
+- 🤖 **Auto-channel creation** - Slack channels are created automatically with you invited
 - 🔔 **Smart approval tracking** - Only notifies when Claude actually needs your permission (not for auto-allowed tools)
 - 🤖 **AI-powered descriptions** - Optional smart mode uses Claude API for contextual summaries
 - 📝 **Smart fallback** - Extracts Claude's last message when smart mode is disabled
@@ -258,15 +260,21 @@ Add to `.claude/settings.json`:
 
 Perfect for tracking when you actually need to take action!
 
-### Slack Integration (Direct Messages)
+### Slack Integration (Channel-per-Repo Routing)
 
-Get real-time Claude notifications sent directly to your Slack DMs! This is the **recommended way** to stay informed about Claude sessions, especially when working across multiple projects and terminals.
+Get real-time Claude notifications routed to **dedicated private Slack channels per repository**! This is the **recommended way** to stay informed about Claude sessions, especially when working across multiple projects and git worktrees.
 
-**Why Slack DMs?**
-- 📱 **Instant notifications** on desktop and mobile
-- 🔒 **Private** - only you see them
-- 🎨 **Rich formatting** with Block Kit
-- 🚀 **No extra terminals** needed to monitor
+**Why Channel-per-Repo?**
+- 📂 **Context segmentation** - Each repo gets its own private channel
+- 🔄 **Worktree-friendly** - Notifications from `.worktrees/feature-x` go to the parent repo's channel
+- 🔒 **Private channels** - Only you and the bot can see them
+- 🤖 **Auto-created** - Channels are created automatically when first notification fires
+- 📱 **Clean message format** - Just emoji + smart task description (Slack provides timestamp, channel name indicates repo)
+- 🚀 **No manual setup** - Channels created and you're invited automatically
+
+**Channel naming pattern:** `claude_notifications_{user_id}_{repo_name}`
+- Example: `#claude_notifications_uc56m1dj6_sonar`
+- All worktrees from the same repo route to the same channel
 
 #### Setup (5 minutes)
 
@@ -279,8 +287,9 @@ Get real-time Claude notifications sent directly to your Slack DMs! This is the 
 **2. Add Bot Scopes:**
 1. In app settings → **"OAuth & Permissions"** (left sidebar)
 2. Scroll to **"Scopes"** → **"Bot Token Scopes"**
-3. Click **"Add an OAuth Scope"** and add these two:
+3. Click **"Add an OAuth Scope"** and add these scopes:
    - `chat:write` (to send messages)
+   - `groups:write` (to create and manage private channels)
    - `users:read` (to get user info)
 
 **3. Install App to Workspace:**
@@ -318,7 +327,7 @@ Add both values to `.claude/settings.json`:
   "env": {
     "ANTHROPIC_API_KEY": "sk-ant-...",
     "SLACK_BOT_TOKEN": "xoxb-YOUR-TOKEN-HERE",
-    "SLACK_USER_ID": "U0G9QF9C6"
+    "SLACK_USER_ID": "UC56M1DJ6"
   },
   "hooks": {
     "Stop": [...],
@@ -340,35 +349,54 @@ SLACK_BOT_TOKEN=xoxb-... SLACK_USER_ID=U... python3 test-slack.py
 You should see:
 - ✅ Bot connected successfully
 - ✅ Test message sent
-- 📱 Check your Slack DMs for the test message!
+- 📱 Check your Slack for the notification!
 
-#### Example Slack DM Format
+**7. Start using Claude!**
+
+The first time Claude sends a notification from a project:
+- ✅ Private channel is created automatically (e.g., `#claude_notifications_uc56m1dj6_sonar`)
+- ✅ You're invited to the channel automatically
+- ✅ Notification is posted to the channel
+
+#### Example Slack Message Format
+
+Simple and clean - just what you need:
 
 ```
-🟡 Claude Notification
-━━━━━━━━━━━━━━━━━━━━━
-
-📁 Path:                    🆔 Session:
-/Users/aldo/dev/sonar       b510b600
-
-📝 Task:                    ⏰ Time:
-Updated hook with Slack     15:30:45
+🟡 Simplified Slack message format to show only smart task description
 ```
+
+That's it! No redundant metadata:
+- ❌ No path (channel name already indicates the repo)
+- ❌ No session ID (not needed in channel context)
+- ❌ No timestamp (Slack provides this automatically)
+
+Just the emoji indicating event type and the smart AI-generated description of what Claude just did.
 
 #### Features
 
-- ✅ **Private DMs** (only you see them)
-- ✅ **Rich formatting** with Block Kit and emojis
-- ✅ **Event-based icons** (🟡 Stop, 🔔 Notification, ⚫ SessionEnd)
-- ✅ **Silent failure** (won't block hooks if Slack is down)
-- ✅ **Dual output** (works alongside file notifications)
-- ✅ **No dependencies** (uses Python standard library)
+- ✅ **One channel per repo** - Clean organization
+- ✅ **Private channels** - Only you can see them
+- ✅ **Auto-created channels** - No manual setup needed
+- ✅ **Auto-invitation** - You're invited when channel is created
+- ✅ **Worktree support** - Automatically routes to parent repo channel
+- ✅ **Event-based emojis** (🟡 Stop, 🔔 Notification, ⚫ SessionEnd)
+- ✅ **Minimal message format** - Clean, focused notifications
+- ✅ **Silent failure** - Won't block hooks if Slack is down
+- ✅ **Dual output** - Works alongside file notifications
+- ✅ **No dependencies** - Uses Python standard library
 
 #### Troubleshooting
 
-**"Bot connected successfully" but no messages:**
-- Verify `SLACK_USER_ID` is YOUR user ID (starts with U), not the bot's
-- Try sending a test message with `test-slack.py`
+**"missing_scope" error when creating channels:**
+- Make sure you added `groups:write` scope (for private channels)
+- Re-install the app after adding scopes
+- Note: `channels:manage` is for public channels, `groups:write` is for private channels
+
+**Channel created but I can't see it:**
+- Check private channels in Slack (not public channels)
+- Ensure you were invited when the channel was created
+- Look for channels starting with `claude_notifications_`
 
 **"invalid_auth" error:**
 - Check that your bot token is correct
@@ -380,8 +408,8 @@ Updated hook with Slack     15:30:45
 - Get it from your Slack profile (see step 4 above)
 
 **Messages not appearing:**
-- Check Slack DMs (not channels)
-- Look for messages from "Claude Code Notifier" app
+- Check private channels (not DMs)
+- Look for channels named `claude_notifications_{your_user_id}_{repo_name}`
 - Check Slack notification settings
 
 ## Configuration Options
@@ -474,13 +502,16 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.3.0
-**What's New in v2.3:**
-- 🔔 **Notification hook** (RECOMMENDED): Only fires when approval actually needed, not for auto-allowed tools
-- 🎯 **Smarter notifications**: Eliminates spam from auto-approved commands like `git status`
-- 📝 **Updated docs**: Clear guidance on Notification vs PreToolUse
+**Version:** 2.4.0
+**What's New in v2.4:**
+- 📂 **Channel-per-repo routing**: Dedicated private Slack channels for each repository
+- 🔄 **Worktree support**: Automatically routes notifications from git worktrees to parent repo channel
+- 🤖 **Auto-channel creation**: Channels created automatically with user invitation on first notification
+- 📱 **Simplified message format**: Clean emoji + smart description format (removed redundant metadata)
+- ⚡ **Better context segmentation**: Keep notifications organized by project
 
 **Previous Updates:**
+- v2.3: Notification hook (RECOMMENDED) - only fires when approval actually needed
 - v2.2: Python 3.9 compatibility fix for type hints
 - v2.1: Slack Bot Integration with real-time DM notifications
 - v2.0: Smart Mode (AI descriptions) + PreToolUse Hook (approval tracking)

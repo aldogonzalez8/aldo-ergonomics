@@ -19,6 +19,66 @@ import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+import re
+
+
+def get_repo_name(cwd: str) -> str:
+    """
+    Extract repository name from cwd path, handling worktrees.
+
+    Examples:
+        /Users/aldo/dev/sonar → sonar
+        /Users/aldo/dev/sonar/.worktrees/feature-x → sonar
+        /Users/aldo → aldo
+    """
+    path = Path(cwd)
+
+    # Check if in worktree (.worktrees/branch-name)
+    if '.worktrees' in path.parts:
+        # Find the index of .worktrees and go up to parent
+        idx = path.parts.index('.worktrees')
+        repo_path = Path(*path.parts[:idx])
+        return repo_path.name
+    else:
+        # Regular repo - return directory name
+        return path.name
+
+
+def sanitize_channel_name(name: str) -> str:
+    """
+    Sanitize channel name for Slack.
+    - Convert to lowercase
+    - Replace spaces, underscores, and special chars with hyphens
+    - Remove consecutive hyphens
+
+    Examples:
+        My_Repo → my-repo
+        Sonar DEV → sonar-dev
+    """
+    # Convert to lowercase
+    name = name.lower()
+    # Replace underscores and spaces with hyphens
+    name = re.sub(r'[_\s]+', '-', name)
+    # Remove special characters (keep alphanumeric and hyphens)
+    name = re.sub(r'[^a-z0-9-]', '', name)
+    # Remove consecutive hyphens
+    name = re.sub(r'-+', '-', name)
+    # Strip leading/trailing hyphens
+    name = name.strip('-')
+    return name
+
+
+def get_slack_channel(cwd: str) -> str:
+    """
+    Build Slack channel name: claude_notifications_{user_id}_{repo_name}
+
+    Examples:
+        /Users/aldo/dev/sonar → claude_notifications_uc56m1dj6_sonar
+        /Users/aldo/dev/sonar/.worktrees/feature-x → claude_notifications_uc56m1dj6_sonar
+    """
+    user_id = os.environ.get('SLACK_USER_ID', '').lower()
+    repo_name = sanitize_channel_name(get_repo_name(cwd))
+    return f"claude_notifications_{user_id}_{repo_name}"
 
 
 def debug_log(message: str):
@@ -256,17 +316,130 @@ def write_notification(notification: dict):
         f.write(json.dumps(notification) + '\n')
 
 
-def send_to_slack_dm(notification: dict) -> bool:
+def ensure_slack_channel_exists(channel_name: str, bot_token: str) -> bool:
     """
-    Send notification to Slack via Bot chat.postMessage API (DM to user).
+    Check if Slack channel exists, create if it doesn't.
+    Returns True if channel exists or was created successfully.
+    """
+    try:
+        # Check if channel exists by searching
+        search_url = "https://slack.com/api/conversations.list"
+        search_params = {
+            "types": "private_channel",
+            "limit": 1000
+        }
+        headers = {
+            "Authorization": f"Bearer {bot_token}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        # Build query string
+        query = '&'.join([f"{k}={v}" for k, v in search_params.items()])
+        search_req = urllib.request.Request(
+            f"{search_url}?{query}",
+            headers=headers,
+            method='GET'
+        )
+
+        with urllib.request.urlopen(search_req, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            if result.get('ok'):
+                # Check if channel with this name exists
+                for channel in result.get('channels', []):
+                    if channel.get('name') == channel_name:
+                        debug_log(f"Channel #{channel_name} already exists")
+                        return True
+
+        # Channel doesn't exist, create it
+        debug_log(f"Creating channel #{channel_name}...")
+        create_url = "https://slack.com/api/conversations.create"
+        create_payload = {
+            "name": channel_name,
+            "is_private": True
+        }
+
+        create_req = urllib.request.Request(
+            create_url,
+            data=json.dumps(create_payload).encode('utf-8'),
+            headers={
+                "Authorization": f"Bearer {bot_token}",
+                "Content-Type": "application/json; charset=utf-8"
+            },
+            method='POST'
+        )
+
+        with urllib.request.urlopen(create_req, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            if result.get('ok'):
+                channel_id = result.get('channel', {}).get('id')
+                debug_log(f"✓ Created channel #{channel_name} (ID: {channel_id})")
+
+                # Invite the user to the newly created channel
+                user_id = os.environ.get('SLACK_USER_ID')
+                if user_id and channel_id:
+                    invite_url = "https://slack.com/api/conversations.invite"
+                    invite_payload = {
+                        "channel": channel_id,
+                        "users": user_id
+                    }
+                    invite_req = urllib.request.Request(
+                        invite_url,
+                        data=json.dumps(invite_payload).encode('utf-8'),
+                        headers={
+                            "Authorization": f"Bearer {bot_token}",
+                            "Content-Type": "application/json; charset=utf-8"
+                        },
+                        method='POST'
+                    )
+                    try:
+                        with urllib.request.urlopen(invite_req, timeout=5) as invite_response:
+                            invite_result = json.loads(invite_response.read().decode('utf-8'))
+                            if invite_result.get('ok'):
+                                debug_log(f"✓ Invited user to #{channel_name}")
+                            else:
+                                debug_log(f"Failed to invite user: {invite_result.get('error', 'unknown')}")
+                    except Exception as e:
+                        debug_log(f"Error inviting user: {str(e)}")
+
+                return True
+            else:
+                error = result.get('error', 'unknown')
+                debug_log(f"Failed to create channel: {error}")
+
+                # If channel name is taken, it exists but we might not be able to see it
+                # Try to proceed anyway - posting might still work
+                if error == 'name_taken':
+                    debug_log(f"Channel {channel_name} already exists, proceeding to post")
+                    return True  # Proceed anyway
+
+                return False
+
+    except Exception as e:
+        debug_log(f"Error ensuring channel exists: {type(e).__name__}: {str(e)}")
+        return False
+
+
+def send_to_slack_channel(notification: dict) -> bool:
+    """
+    Send notification to Slack channel (claude_{user_id}_{repo_name}).
+    Automatically creates the channel if it doesn't exist.
     Returns True if successful, False otherwise.
-    Silently fails if not configured or on error (won't block hook).
+    Silently fails if not configured, channel creation fails, or on error (won't block hook).
     """
     bot_token = os.environ.get('SLACK_BOT_TOKEN')
-    user_id = os.environ.get('SLACK_USER_ID')
+    cwd = notification.get('code_session_path', '')
 
-    if not bot_token or not user_id:
+    if not bot_token or not cwd:
         return False  # Silently skip if not configured
+
+    # Build channel name from repo
+    channel_name = get_slack_channel(cwd)
+    debug_log(f"Target channel: #{channel_name}")
+
+    # Ensure channel exists (create if needed)
+    if not ensure_slack_channel_exists(channel_name, bot_token):
+        debug_log(f"Skipping notification - channel doesn't exist and couldn't be created")
+        return False
 
     try:
         # Map event to emoji
@@ -279,61 +452,13 @@ def send_to_slack_dm(notification: dict) -> bool:
         }
         emoji = emoji_map.get(event, '⚪')
 
-        # Format timestamp
-        timestamp_str = notification.get('timestamp', '')
-        try:
-            dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-            time_formatted = dt.strftime('%H:%M:%S')
-        except:
-            time_formatted = 'Unknown'
-
-        # Extract fields
-        path = notification.get('code_session_path', 'Unknown')
-        session_id = notification.get('session_id', 'Unknown')
-        session_short = session_id[:8] if len(session_id) >= 8 else session_id
+        # Extract task description
         task = notification.get('task', 'No description')
 
-        # Build Slack Block Kit message
-        blocks = [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"{emoji} *Claude Notification*\n━━━━━━━━━━━━━━━━━━━━━"
-                }
-            },
-            {
-                "type": "section",
-                "fields": [
-                    {
-                        "type": "mrkdwn",
-                        "text": f"📁 *Path:*\n`{path}`"
-                    },
-                    {
-                        "type": "mrkdwn",
-                        "text": f"🆔 *Session:*\n`{session_short}`"
-                    }
-                ]
-            },
-            {
-                "type": "section",
-                "fields": [
-                    {
-                        "type": "mrkdwn",
-                        "text": f"📝 *Task:*\n{task}"
-                    },
-                    {
-                        "type": "mrkdwn",
-                        "text": f"⏰ *Time:*\n{time_formatted}"
-                    }
-                ]
-            }
-        ]
-
+        # Simple message with just emoji and task
         payload = {
-            "channel": user_id,  # Send to user DM
-            "blocks": blocks,
-            "text": f"{emoji} Claude: {task}"  # Fallback for notifications
+            "channel": channel_name,  # Send to channel (not DM)
+            "text": f"{emoji} {task}"
         }
 
         # POST to Slack API
@@ -377,8 +502,8 @@ def main():
         # Write to notification file
         write_notification(notification)
 
-        # Send to Slack DM (optional, won't block if fails)
-        send_to_slack_dm(notification)
+        # Send to Slack channel (optional, won't block if fails)
+        send_to_slack_channel(notification)
 
         # Exit successfully (don't block the hook)
         sys.exit(0)
