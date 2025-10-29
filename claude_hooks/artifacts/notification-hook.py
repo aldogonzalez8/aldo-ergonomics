@@ -115,9 +115,18 @@ def read_last_claude_message(transcript_path: str) -> str:
         for line in reversed(lines[-20:]):  # Check last 20 lines
             try:
                 entry = json.loads(line)
-                if entry.get('role') == 'assistant':
+                # Claude Code transcript format uses "type" instead of "role"
+                role = entry.get('type', '') or entry.get('role', '')
+
+                if role == 'assistant':
                     # Look for text content in the message
-                    content = entry.get('content', [])
+                    # Content may be nested in message.content for Claude Code transcripts
+                    content = None
+                    if 'message' in entry and isinstance(entry['message'], dict):
+                        content = entry['message'].get('content', [])
+                    else:
+                        content = entry.get('content', [])
+
                     if isinstance(content, list):
                         for block in content:
                             if isinstance(block, dict) and block.get('type') == 'text':
