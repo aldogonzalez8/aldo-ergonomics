@@ -244,23 +244,58 @@ SMART_SUMMARY_TARGET = 300     # Condense long messages to ~this
 MAX_SLACK_LENGTH = 1000        # Absolute maximum before hard truncation
 ```
 
-### Notification Hook (Smart Approval Tracking) - **RECOMMENDED**
+### Conversation Tracking (Complete Context) - **RECOMMENDED**
 
-Get notified **only when Claude actually needs your approval**, not for every auto-allowed tool use.
+Track **complete conversations** in your Slack channel with user messages, Claude responses, and approved actions!
 
-**Why use Notification instead of PreToolUse?**
-- ✅ **PreToolUse** fires for EVERY tool use (including auto-allowed ones like `git status`) - annoying!
-- ✅ **Notification** fires ONLY when Claude needs approval - perfect!
+#### Available Hooks for Full Conversation Flow
 
-#### Enabling Notification Hook
+| Hook | When It Fires | Shows | Emoji |
+|------|---------------|-------|-------|
+| **UserPromptSubmit** | You send a message | Your messages and responses | 👤 |
+| **Stop** | Claude finishes responding | Claude's messages | 🟡 |
+| **Notification** | Claude needs approval | Permission requests | 🔔 |
+| **PostToolUse** | Tool completes successfully | Approved actions | ✅ |
+| **SessionEnd** | Session terminates | Session ended | ⚫ |
 
-Add to `.claude/settings.json`:
+#### Complete Conversation Setup
+
+Add all hooks to `.claude/settings.json` for full conversation tracking:
 
 ```json
 {
   "hooks": {
-    "Stop": [...],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/notification-hook.py"
+          }
+        ]
+      }
+    ],
     "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/notification-hook.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/notification-hook.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
       {
         "hooks": [
           {
@@ -274,21 +309,17 @@ Add to `.claude/settings.json`:
 }
 ```
 
-#### Example Notification Events
+#### Example Conversation Flow in Slack
 
 ```
-[2025-10-28 15:02:06] Session test-write
-  Path: /Users/aldo/dev/sonar
-  Task: Updated settings (needs approval)
-  Event: Notification
-
-[2025-10-28 15:03:12] Session test-bash
-  Path: /Users/aldo/dev/sonar
-  Task: Proposed running destructive command (needs approval)
-  Event: Notification
+👤 User: "Add a dark mode toggle to the settings page"
+🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
+✅ Edited src/components/Settings.tsx
+✅ Ran: npm test
+🟡 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
-Perfect for tracking when you actually need to take action!
+**Note:** Denials can be inferred when 🔔 appears but no ✅ follows.
 
 ### Slack Integration (Channel-per-Repo Routing)
 
@@ -532,12 +563,15 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.5.1
-**What's New in v2.5.1:**
-- 🐛 **Critical Fix**: Fixed transcript parsing bug where hybrid mode always returned fallback message
-- ✅ **Now correctly extracts full Claude messages** from transcripts for Slack notifications
+**Version:** 2.6.0
+**What's New in v2.6:**
+- 💬 **Complete Conversation Tracking**: Track user messages (👤), Claude responses (🟡), and approved actions (✅)
+- 📝 **UserPromptSubmit Hook**: See your own messages in the Slack channel
+- ✅ **PostToolUse Hook**: Track which actions were approved and completed
+- 🎯 **Full Context**: Your Slack channel becomes a readable conversation log
 
 **Previous Updates:**
+- v2.5.1: Fixed transcript parsing bug for hybrid mode
 - v2.5: Hybrid Smart Mode (full text for short, AI condensing for long messages)
 - v2.4: Channel-per-repo routing, worktree support, simplified message format
 - v2.3: Notification hook (RECOMMENDED) - only fires when approval actually needed

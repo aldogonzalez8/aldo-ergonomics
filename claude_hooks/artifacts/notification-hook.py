@@ -270,8 +270,35 @@ def get_task_description_for_slack(hook_data: dict) -> str:
     event = hook_data.get('hook_event_name', '')
     transcript_path = hook_data.get('transcript_path', '')
 
+    # Handle UserPromptSubmit - user's message
+    if event == 'UserPromptSubmit':
+        user_message = hook_data.get('user_message', '')
+        if user_message:
+            # Truncate long user messages
+            if len(user_message) > SHORT_MESSAGE_THRESHOLD:
+                return user_message[:SHORT_MESSAGE_THRESHOLD] + "..."
+            return user_message
+        return "User submitted a message"
+
+    # Handle PostToolUse - tool was approved and completed
+    elif event == 'PostToolUse':
+        tool_name = hook_data.get('tool_name', 'unknown')
+        tool_input = hook_data.get('tool_input', {})
+
+        if tool_name == 'Write':
+            file_path = tool_input.get('file_path', 'a file')
+            return f"✓ Wrote to {file_path}"
+        elif tool_name == 'Edit':
+            file_path = tool_input.get('file_path', 'a file')
+            return f"✓ Edited {file_path}"
+        elif tool_name == 'Bash':
+            command = tool_input.get('command', 'a command')[:100]
+            return f"✓ Ran: {command}"
+        else:
+            return f"✓ Used {tool_name}"
+
     # Handle events without transcripts
-    if event == 'PreToolUse':
+    elif event == 'PreToolUse':
         tool_name = hook_data.get('tool_name', 'unknown')
         tool_input = hook_data.get('tool_input', {})
 
@@ -527,6 +554,8 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
             'Stop': '🟡',
             'Notification': '🔔',
             'PreToolUse': '🔵',
+            'PostToolUse': '✅',
+            'UserPromptSubmit': '👤',
             'SessionEnd': '⚫'
         }
         emoji = emoji_map.get(event, '⚪')
