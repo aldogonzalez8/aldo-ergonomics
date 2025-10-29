@@ -568,6 +568,9 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
         user_id = os.environ.get('SLACK_USER_ID')
         if event == 'Notification' and user_id:
             message = f"<@{user_id}> {emoji} {task}"
+        elif event == 'PostToolUse':
+            # Indent tool usage to show it's secondary to conversation
+            message = f"    {emoji} {task}"
         else:
             message = f"{emoji} {task}"
 

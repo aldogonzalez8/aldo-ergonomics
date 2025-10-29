@@ -320,8 +320,8 @@ Add all hooks to `.claude/settings.json` for full conversation tracking:
 👤 User: "Add a dark mode toggle to the settings page"
 🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
 @you 🔔 Claude wants to edit Settings.tsx (needs approval)
-🛠️ Edited src/components/Settings.tsx
-🛠️ Ran: npm test
+    🛠️ Edited src/components/Settings.tsx
+    🛠️ Ran: npm test
 🟡 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
@@ -574,11 +574,13 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.7.2
-**What's New in v2.7.2:**
-- 🐛 **Fixed duplicate @mentions**: Only Notification events @mention you (avoids duplicate pings)
-- 🔕 **Zero spam**: Stop events post silently to channel, visible but no notification
-- 📝 **Clean flow**: Full conversation history without duplicate mentions
+**Version:** 2.7.3
+**What's New in v2.7.3:**
+- 🎨 **Indented tool usage**: PostToolUse messages now indented (4 spaces) for visual hierarchy
+- 📝 **Better readability**: Tool completions appear secondary to conversation flow
+
+**Previous Updates:**
+- v2.7.2: Fixed duplicate @mentions (Notification-only)
 
 **Previous Updates:**
 - v2.6.2: Changed PostToolUse emoji to 🛠️ for semantic clarity
