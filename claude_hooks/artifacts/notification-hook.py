@@ -272,12 +272,12 @@ def get_task_description_for_slack(hook_data: dict) -> str:
 
     # Handle UserPromptSubmit - user's message
     if event == 'UserPromptSubmit':
-        user_message = hook_data.get('user_message', '')
-        if user_message:
+        user_prompt = hook_data.get('prompt', '')
+        if user_prompt:
             # Truncate long user messages
-            if len(user_message) > SHORT_MESSAGE_THRESHOLD:
-                return user_message[:SHORT_MESSAGE_THRESHOLD] + "..."
-            return user_message
+            if len(user_prompt) > SHORT_MESSAGE_THRESHOLD:
+                return user_prompt[:SHORT_MESSAGE_THRESHOLD] + "..."
+            return user_prompt
         return "User submitted a message"
 
     # Handle PostToolUse - tool was approved and completed
