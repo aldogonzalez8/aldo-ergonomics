@@ -554,7 +554,7 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
             'Stop': '🟡',
             'Notification': '🔔',
             'PreToolUse': '🔵',
-            'PostToolUse': '✅',
+            'PostToolUse': '🛠️',
             'UserPromptSubmit': '👤',
             'SessionEnd': '⚫'
         }

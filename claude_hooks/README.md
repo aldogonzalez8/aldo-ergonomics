@@ -255,7 +255,7 @@ Track **complete conversations** in your Slack channel with user messages, Claud
 | **UserPromptSubmit** | You send a message | Your messages and responses | 👤 |
 | **Stop** | Claude finishes responding | Claude's messages | 🟡 |
 | **Notification** | Claude needs approval | Permission requests | 🔔 |
-| **PostToolUse** | Tool completes successfully | Approved actions | ✅ |
+| **PostToolUse** | Tool completes successfully | Approved actions | 🛠️ |
 | **SessionEnd** | Session terminates | Session ended | ⚫ |
 
 #### Complete Conversation Setup
@@ -314,12 +314,12 @@ Add all hooks to `.claude/settings.json` for full conversation tracking:
 ```
 👤 User: "Add a dark mode toggle to the settings page"
 🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
-✅ Edited src/components/Settings.tsx
-✅ Ran: npm test
+🛠️ Edited src/components/Settings.tsx
+🛠️ Ran: npm test
 🟡 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
-**Note:** Denials can be inferred when 🔔 appears but no ✅ follows.
+**Note:** Denials can be inferred when 🔔 appears but no 🛠️ follows.
 
 ### Slack Integration (Channel-per-Repo Routing)
 
@@ -563,12 +563,12 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.6.1
-**What's New in v2.6.1:**
-- 🐛 **Critical Fix**: UserPromptSubmit now correctly captures user message text using 'prompt' field
-- ✅ **User messages now display properly** in Slack notifications
+**Version:** 2.6.2
+**What's New in v2.6.2:**
+- 🎨 **Better emoji**: Changed PostToolUse from ✅ to 🛠️ (hammer and wrench) for semantic clarity
 
 **Previous Updates:**
+- v2.6.1: Fixed UserPromptSubmit to use 'prompt' field
 - v2.6: Complete conversation tracking with UserPromptSubmit and PostToolUse hooks
 - v2.5.1: Fixed transcript parsing bug for hybrid mode
 - v2.5: Hybrid Smart Mode (full text for short, AI condensing for long messages)
