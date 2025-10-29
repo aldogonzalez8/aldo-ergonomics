@@ -568,7 +568,10 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
         if event in ('Stop', 'Notification') and user_id:
             message = f"<@{user_id}> {emoji} {task}"
         elif event == 'PostToolUse':
-            # Indent tool usage to show it's secondary to conversation
+            # Double indent tool usage (8 spaces) to show it's secondary
+            message = f"        {emoji} {task}"
+        elif event == 'UserPromptSubmit':
+            # Single indent user messages (4 spaces)
             message = f"    {emoji} {task}"
         else:
             message = f"{emoji} {task}"
