@@ -563,14 +563,13 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.6.0
-**What's New in v2.6:**
-- 💬 **Complete Conversation Tracking**: Track user messages (👤), Claude responses (🟡), and approved actions (✅)
-- 📝 **UserPromptSubmit Hook**: See your own messages in the Slack channel
-- ✅ **PostToolUse Hook**: Track which actions were approved and completed
-- 🎯 **Full Context**: Your Slack channel becomes a readable conversation log
+**Version:** 2.6.1
+**What's New in v2.6.1:**
+- 🐛 **Critical Fix**: UserPromptSubmit now correctly captures user message text using 'prompt' field
+- ✅ **User messages now display properly** in Slack notifications
 
 **Previous Updates:**
+- v2.6: Complete conversation tracking with UserPromptSubmit and PostToolUse hooks
 - v2.5.1: Fixed transcript parsing bug for hybrid mode
 - v2.5: Hybrid Smart Mode (full text for short, AI condensing for long messages)
 - v2.4: Channel-per-repo routing, worktree support, simplified message format
