@@ -532,15 +532,13 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.5.0
-**What's New in v2.5:**
-- 🚀 **Hybrid Smart Mode**: Full message text for short notifications (≤ 500 chars), AI condensing for long messages
-- ⚡ **70-80% faster**: Most notifications instant (no API call needed)
-- 💰 **70-80% cheaper**: API only used for long messages (>500 chars)
-- 📝 **Better readability**: Short messages show full context, long messages stay concise
-- 🔧 **Configurable thresholds**: Adjust SHORT_MESSAGE_THRESHOLD, SMART_SUMMARY_TARGET, MAX_SLACK_LENGTH
+**Version:** 2.5.1
+**What's New in v2.5.1:**
+- 🐛 **Critical Fix**: Fixed transcript parsing bug where hybrid mode always returned fallback message
+- ✅ **Now correctly extracts full Claude messages** from transcripts for Slack notifications
 
 **Previous Updates:**
+- v2.5: Hybrid Smart Mode (full text for short, AI condensing for long messages)
 - v2.4: Channel-per-repo routing, worktree support, simplified message format
 - v2.3: Notification hook (RECOMMENDED) - only fires when approval actually needed
 - v2.2: Python 3.9 compatibility fix for type hints
