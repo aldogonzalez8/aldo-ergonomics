@@ -249,9 +249,9 @@ MAX_SLACK_LENGTH = 1000        # Absolute maximum before hard truncation
 Track **complete conversations** in your Slack channel with user messages, Claude responses, and approved actions!
 
 **Smart Notifications:**
-- 🔕 **Mute your channels** - Most messages post silently (Stop, UserPromptSubmit, PostToolUse)
-- 🔔 **@mentions only when approval needed** - Get pinged on Notification events
-- 📝 **Full conversation log** - Everything is recorded, zero spam
+- 🔕 **Mute your channels** - Tool completions and user messages post silently
+- 🔔 **@mentions on Claude's updates** - Get pinged when Claude responds (Stop) or needs approval (Notification)
+- 📝 **Full conversation log** - Everything is recorded with selective pings
 
 #### Available Hooks for Full Conversation Flow
 
@@ -318,17 +318,18 @@ Add all hooks to `.claude/settings.json` for full conversation tracking:
 
 ```
 👤 User: "Add a dark mode toggle to the settings page"
-🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
+@you 🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
 @you 🔔 Claude wants to edit Settings.tsx (needs approval)
     🛠️ Edited src/components/Settings.tsx
     🛠️ Ran: npm test
-🟡 Claude: "Dark mode toggle added successfully! Tests passing."
+@you 🟡 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
 **How it works:**
-- **Only Notification events** `@mention` you (when Claude needs approval)
-- **All other events** post silently (Stop, UserPromptSubmit, PostToolUse, SessionEnd)
-- **Tip:** Mute your Claude channels completely, rely on @mentions for approvals only
+- **Stop & Notification events** `@mention` you (Claude's responses and approval requests)
+- **Tool completions and user messages** post silently (no notification if channel is muted)
+- **Note:** When Claude finishes and needs approval, you may see duplicate @mentions (both Stop and Notification fire)
+- **Tip:** Mute your Claude channels to reduce noise, get pinged for Claude's updates
 
 **Note:** Denials can be inferred when 🔔 @mention appears but no 🛠️ follows.
 
@@ -574,12 +575,13 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.7.3
-**What's New in v2.7.3:**
-- 🎨 **Indented tool usage**: PostToolUse messages now indented (4 spaces) for visual hierarchy
-- 📝 **Better readability**: Tool completions appear secondary to conversation flow
+**Version:** 2.7.4
+**What's New in v2.7.4:**
+- 🔔 **@mentions on Stop events restored**: Get pinged when Claude finishes responding
+- ⚠️ **Note**: May see duplicate @mentions when Stop and Notification fire together (acceptable tradeoff)
 
 **Previous Updates:**
+- v2.7.3: Indented tool usage for visual hierarchy
 - v2.7.2: Fixed duplicate @mentions (Notification-only)
 
 **Previous Updates:**

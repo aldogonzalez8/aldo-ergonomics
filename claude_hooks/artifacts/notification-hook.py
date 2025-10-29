@@ -563,10 +563,9 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
         # Generate task description using hybrid approach (for Slack)
         task = get_task_description_for_slack(hook_data)
 
-        # Add @mention only for Notification events (needs approval)
-        # Stop events post silently to avoid duplicate mentions
+        # Add @mention for Stop and Notification events (Claude's responses and approvals)
         user_id = os.environ.get('SLACK_USER_ID')
-        if event == 'Notification' and user_id:
+        if event in ('Stop', 'Notification') and user_id:
             message = f"<@{user_id}> {emoji} {task}"
         elif event == 'PostToolUse':
             # Indent tool usage to show it's secondary to conversation
