@@ -320,15 +320,15 @@ Add all hooks to `.claude/settings.json` for full conversation tracking:
 ├─ 👤 User: "Add a dark mode toggle to the settings page"
 @you 🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
 @you 🔔 Claude wants to edit Settings.tsx (needs approval)
-      └─ 🛠️ Edited src/components/Settings.tsx
-      └─ 🛠️ Ran: npm test
+│ └─ 🛠️ Edited src/components/Settings.tsx
+│ └─ 🛠️ Ran: npm test
 @you 🟡 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
 **Visual hierarchy (ASCII tree format):**
 - Claude messages (🟡, 🔔): No prefix
 - User messages (👤): `├─` prefix (tree connector)
-- Tool usage (🛠️): 6 spaces + `└─` prefix (tree branch, nested)
+- Tool usage (🛠️): `│ └─` prefix (nested with vertical line)
 
 **How it works:**
 - **Stop & Notification events** `@mention` you (Claude's responses and approval requests)
@@ -580,12 +580,13 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.7.7
-**What's New in v2.7.7:**
-- 🌳 **Increased tool nesting**: 6 spaces before `└─` for clearer visual hierarchy
-- 📊 **More visible structure**: Tool usage now clearly nested under conversation
+**Version:** 2.7.8
+**What's New in v2.7.8:**
+- 🌳 **Vertical line nesting**: Using `│ └─` for tools instead of spaces (Slack strips whitespace)
+- 📊 **Visible hierarchy**: Vertical line character creates clear visual nesting
 
 **Previous Updates:**
+- v2.7.7: Attempted 6-space indentation (didn't work, Slack strips spaces)
 - v2.7.6: ASCII tree format with `├─` and `└─` characters
 
 **Previous Updates:**

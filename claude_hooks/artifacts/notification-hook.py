@@ -570,8 +570,8 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
             message = f"<@{user_id}> {emoji} {task}"
         elif event == 'PostToolUse':
             # Tool usage with tree branch (secondary to conversation)
-            # Using 6 spaces for more visible nesting
-            message = f"      └─ {emoji} {task}"
+            # Using │ (vertical line) for visible nesting since Slack strips spaces
+            message = f"│ └─ {emoji} {task}"
         elif event == 'UserPromptSubmit':
             # User messages with tree connector
             message = f"├─ {emoji} {task}"
