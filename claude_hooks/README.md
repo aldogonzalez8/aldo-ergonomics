@@ -249,9 +249,9 @@ MAX_SLACK_LENGTH = 1000        # Absolute maximum before hard truncation
 Track **complete conversations** in your Slack channel with user messages, Claude responses, and approved actions!
 
 **Smart Notifications:**
-- 🔕 **Mute your channels** - Tool completions and user messages post silently
-- 🔔 **@mentions on Claude's updates** - Get pinged when Claude responds or needs approval
-- 📝 **Full conversation log** - Everything is recorded, selective notifications
+- 🔕 **Mute your channels** - Most messages post silently (Stop, UserPromptSubmit, PostToolUse)
+- 🔔 **@mentions only when approval needed** - Get pinged on Notification events
+- 📝 **Full conversation log** - Everything is recorded, zero spam
 
 #### Available Hooks for Full Conversation Flow
 
@@ -318,17 +318,17 @@ Add all hooks to `.claude/settings.json` for full conversation tracking:
 
 ```
 👤 User: "Add a dark mode toggle to the settings page"
-@you 🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
+🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
 @you 🔔 Claude wants to edit Settings.tsx (needs approval)
 🛠️ Edited src/components/Settings.tsx
 🛠️ Ran: npm test
-@you 🟡 Claude: "Dark mode toggle added successfully! Tests passing."
+🟡 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
 **How it works:**
-- **Stop & Notification events** `@mention` you (Claude's responses and approval requests)
-- **Tool completions and user messages** post silently (no notification if channel is muted)
-- **Tip:** Mute your Claude channels to reduce noise, get pinged for Claude's updates
+- **Only Notification events** `@mention` you (when Claude needs approval)
+- **All other events** post silently (Stop, UserPromptSubmit, PostToolUse, SessionEnd)
+- **Tip:** Mute your Claude channels completely, rely on @mentions for approvals only
 
 **Note:** Denials can be inferred when 🔔 @mention appears but no 🛠️ follows.
 
@@ -574,11 +574,11 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.7.1
-**What's New in v2.7.1:**
-- 🔔 **@mentions on Claude updates**: Stop and Notification events now @mention you
-- 🔕 **Selective notifications**: Get pinged for Claude's responses and approval requests
-- 📝 **Silent background**: Tool completions and user messages post without notification
+**Version:** 2.7.2
+**What's New in v2.7.2:**
+- 🐛 **Fixed duplicate @mentions**: Only Notification events @mention you (avoids duplicate pings)
+- 🔕 **Zero spam**: Stop events post silently to channel, visible but no notification
+- 📝 **Clean flow**: Full conversation history without duplicate mentions
 
 **Previous Updates:**
 - v2.6.2: Changed PostToolUse emoji to 🛠️ for semantic clarity
