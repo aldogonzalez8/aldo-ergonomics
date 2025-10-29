@@ -563,10 +563,17 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
         # Generate task description using hybrid approach (for Slack)
         task = get_task_description_for_slack(hook_data)
 
+        # Add @mention for Notification events (needs approval)
+        user_id = os.environ.get('SLACK_USER_ID')
+        if event == 'Notification' and user_id:
+            message = f"<@{user_id}> {emoji} {task}"
+        else:
+            message = f"{emoji} {task}"
+
         # Simple message with just emoji and task
         payload = {
             "channel": channel_name,  # Send to channel (not DM)
-            "text": f"{emoji} {task}"
+            "text": message
         }
 
         # POST to Slack API

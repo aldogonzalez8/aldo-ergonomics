@@ -248,6 +248,11 @@ MAX_SLACK_LENGTH = 1000        # Absolute maximum before hard truncation
 
 Track **complete conversations** in your Slack channel with user messages, Claude responses, and approved actions!
 
+**Smart Notifications:**
+- 🔕 **Mute your channels** - Most messages post silently
+- 🔔 **@mentions on Notification events** - Only get pinged when Claude needs approval
+- 📝 **Full conversation log** - Everything is recorded, but you're not spammed
+
 #### Available Hooks for Full Conversation Flow
 
 | Hook | When It Fires | Shows | Emoji |
@@ -314,12 +319,18 @@ Add all hooks to `.claude/settings.json` for full conversation tracking:
 ```
 👤 User: "Add a dark mode toggle to the settings page"
 🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
+@you 🔔 Claude wants to edit Settings.tsx (needs approval)
 🛠️ Edited src/components/Settings.tsx
 🛠️ Ran: npm test
 🟡 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
-**Note:** Denials can be inferred when 🔔 appears but no 🛠️ follows.
+**How it works:**
+- Most messages post silently (no notification if channel is muted)
+- **Notification events** `@mention` you (so you get pinged even in muted channels)
+- **Tip:** Mute your Claude channels to avoid spam, rely on @mentions for approvals
+
+**Note:** Denials can be inferred when 🔔 @mention appears but no 🛠️ follows.
 
 ### Slack Integration (Channel-per-Repo Routing)
 
@@ -563,11 +574,14 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.6.2
-**What's New in v2.6.2:**
-- 🎨 **Better emoji**: Changed PostToolUse from ✅ to 🛠️ (hammer and wrench) for semantic clarity
+**Version:** 2.7.0
+**What's New in v2.7:**
+- 🔔 **Smart @mentions**: Notification events now @mention you (get pinged only when approval needed)
+- 🔕 **Spam-free**: Other events post silently - mute your channels and rely on @mentions
+- 📝 **Full history without noise**: Complete conversation log, selective notifications
 
 **Previous Updates:**
+- v2.6.2: Changed PostToolUse emoji to 🛠️ for semantic clarity
 - v2.6.1: Fixed UserPromptSubmit to use 'prompt' field
 - v2.6: Complete conversation tracking with UserPromptSubmit and PostToolUse hooks
 - v2.5.1: Fixed transcript parsing bug for hybrid mode
