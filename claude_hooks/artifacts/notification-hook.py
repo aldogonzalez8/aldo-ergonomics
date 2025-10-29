@@ -564,15 +564,16 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
         task = get_task_description_for_slack(hook_data)
 
         # Add @mention for Stop and Notification events (Claude's responses and approvals)
+        # Use ASCII tree characters for visual hierarchy since Slack strips spaces
         user_id = os.environ.get('SLACK_USER_ID')
         if event in ('Stop', 'Notification') and user_id:
             message = f"<@{user_id}> {emoji} {task}"
         elif event == 'PostToolUse':
-            # Double indent tool usage (8 spaces) to show it's secondary
-            message = f"        {emoji} {task}"
+            # Tool usage with tree branch (secondary to conversation)
+            message = f"  └─ {emoji} {task}"
         elif event == 'UserPromptSubmit':
-            # Single indent user messages (4 spaces)
-            message = f"    {emoji} {task}"
+            # User messages with tree connector
+            message = f"├─ {emoji} {task}"
         else:
             message = f"{emoji} {task}"
 

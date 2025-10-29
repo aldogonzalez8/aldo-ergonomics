@@ -317,18 +317,18 @@ Add all hooks to `.claude/settings.json` for full conversation tracking:
 #### Example Conversation Flow in Slack
 
 ```
-    👤 User: "Add a dark mode toggle to the settings page"
+├─ 👤 User: "Add a dark mode toggle to the settings page"
 @you 🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
 @you 🔔 Claude wants to edit Settings.tsx (needs approval)
-        🛠️ Edited src/components/Settings.tsx
-        🛠️ Ran: npm test
+  └─ 🛠️ Edited src/components/Settings.tsx
+  └─ 🛠️ Ran: npm test
 @you 🟡 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
-**Visual hierarchy:**
-- Claude messages (🟡, 🔔): No indent
-- User messages (👤): 4 spaces
-- Tool usage (🛠️): 8 spaces
+**Visual hierarchy (ASCII tree format):**
+- Claude messages (🟡, 🔔): No prefix
+- User messages (👤): `├─` prefix (tree connector)
+- Tool usage (🛠️): `└─` prefix (tree branch)
 
 **How it works:**
 - **Stop & Notification events** `@mention` you (Claude's responses and approval requests)
@@ -580,11 +580,11 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.7.5
-**What's New in v2.7.5:**
-- 🎨 **Enhanced indentation**: User messages (4 spaces), tool usage (8 spaces)
-- 📊 **Visual hierarchy**: Claude (no indent) → User (single) → Tools (double)
-- ⚠️ **Note**: If Slack strips spaces, may need to switch to ASCII tree format
+**Version:** 2.7.6
+**What's New in v2.7.6:**
+- 🌳 **ASCII tree format**: Slack strips spaces, so using `├─` and `└─` for visual hierarchy
+- 📊 **Clear structure**: User messages with `├─`, tool usage with `└─`, Claude unformatted
+- ✨ **Better readability**: Tree characters create clear conversation flow
 
 **Previous Updates:**
 - v2.7.3: Indented tool usage for visual hierarchy
