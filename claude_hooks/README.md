@@ -258,7 +258,7 @@ Track **complete conversations** in your Slack channel with user messages, Claud
 | Hook | When It Fires | Shows | Emoji |
 |------|---------------|-------|-------|
 | **UserPromptSubmit** | You send a message | Your messages and responses | 👤 |
-| **Stop** | Claude finishes responding | Claude's messages | 🟡 |
+| **Stop** | Claude finishes responding | Claude's messages | 🤖 |
 | **Notification** | Claude needs approval | Permission requests | 🔔 |
 | **PostToolUse** | Tool completes successfully | Approved actions | 🛠️ |
 | **SessionEnd** | Session terminates | Session ended | ⚫ |
@@ -318,15 +318,15 @@ Add all hooks to `.claude/settings.json` for full conversation tracking:
 
 ```
 ├─ 👤 User: "Add a dark mode toggle to the settings page"
-@you 🟡 Claude: "I'll help add a dark mode toggle. Let me start by..."
+@you 🤖 Claude: "I'll help add a dark mode toggle. Let me start by..."
 @you 🔔 Claude wants to edit Settings.tsx (needs approval)
 │ └─ 🛠️ Edited src/components/Settings.tsx
 │ └─ 🛠️ Ran: npm test
-@you 🟡 Claude: "Dark mode toggle added successfully! Tests passing."
+@you 🤖 Claude: "Dark mode toggle added successfully! Tests passing."
 ```
 
 **Visual hierarchy (ASCII tree format):**
-- Claude messages (🟡, 🔔): No prefix
+- Claude messages (🤖, 🔔): No prefix
 - User messages (👤): `├─` prefix (tree connector)
 - Tool usage (🛠️): `│ └─` prefix (nested with vertical line)
 
@@ -580,10 +580,10 @@ Created by Aldo González for improving Claude Code ergonomics and session manag
 
 ---
 
-**Version:** 2.7.8
-**What's New in v2.7.8:**
-- 🌳 **Vertical line nesting**: Using `│ └─` for tools instead of spaces (Slack strips whitespace)
-- 📊 **Visible hierarchy**: Vertical line character creates clear visual nesting
+**Version:** 2.7.9
+**What's New in v2.7.9:**
+- 🤖 **Robot emoji for Claude**: Changed Stop event from 🟡 to 🤖 (more thematic!)
+- 🎨 **Better semantics**: Robot represents the AI assistant's responses
 
 **Previous Updates:**
 - v2.7.7: Attempted 6-space indentation (didn't work, Slack strips spaces)

@@ -551,7 +551,7 @@ def send_to_slack_channel(notification: dict, hook_data: dict) -> bool:
         # Map event to emoji
         event = notification.get('event', 'Unknown')
         emoji_map = {
-            'Stop': '🟡',
+            'Stop': '🤖',
             'Notification': '🔔',
             'PreToolUse': '🔵',
             'PostToolUse': '🛠️',
