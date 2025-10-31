@@ -199,10 +199,11 @@ def get_smart_description(transcript_path: str, target_chars: int = 300) -> Opti
                             if isinstance(block, dict) and block.get('type') == 'text':
                                 text = block.get('text', '').strip()
                                 if text:
-                                    last_assistant_text = text[:800]  # Get more context from this one message
+                                    # Get more context to avoid truncation issues (increased from 800 to 1500)
+                                    last_assistant_text = text[:1500]
                                     break
                     elif isinstance(content, str):
-                        last_assistant_text = content[:800]
+                        last_assistant_text = content[:1500]
 
                     if last_assistant_text:
                         break  # Found it, stop searching
